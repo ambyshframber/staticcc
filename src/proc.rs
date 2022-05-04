@@ -64,6 +64,8 @@ impl Processor {
 
         // now plug everything in
 
+        println!("getting configs");
+
         match read_or_none(p.cfg_dir.join("md_ignore"))? { // ignores from cfg
             Some(v) => {
                 for ig in v.split('\n') {
@@ -115,14 +117,10 @@ impl Processor {
 
     fn process_markdown(&self, path: impl AsRef<Path>) -> Result<(), StcError> {
         println!("processing {}", path.as_ref().to_string_lossy());
-        let mut md = read_to_string(self.inp_dir.join(&path))?;
-
-        for (trig, rep) in &self.md_replace {
-            md = replace_all_unescaped(&md, trig, rep)
-        }
+        let md = read_to_string(self.inp_dir.join(&path))?;
 
         let (fm, document) = split_doc(&md)?;
-
+        
         let mut cfg = HashMap::new(); // get cfg from front matter
         for c in fm.split('\n') {
             if c.trim() != "" {
@@ -134,7 +132,7 @@ impl Processor {
         let main = &String::from("main");
         let temp_name = cfg.get("template").unwrap_or(main);
         let mut template = self.md_templates.get(temp_name).ok_or(StcError::TemplateError(temp_name.to_owned()))?.to_owned();
-
+        
         for (block_name, block) in document {
             let rep_trigger = format!("##{}##", block_name);
             template = replace_all_unescaped(&template, &rep_trigger, &block);
@@ -143,9 +141,12 @@ impl Processor {
             let rep_trigger = format!("##{}##", k);
             template = replace_all_unescaped(&template, &rep_trigger, &v);
         }
+        for (trig, rep) in &self.md_replace {
+            template = replace_all_unescaped(&template, trig, rep)
+        }
         template = replace_unused_tags(&template);
 
-        println!("{}", template);
+        //println!("{}", template);
 
         let html = markdown_to_html(&template, &self.md_options);
 

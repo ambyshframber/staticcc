@@ -40,7 +40,7 @@ pub fn replace_all_unescaped(s: &str, pat: &str, rep: &str) -> String {
 }
 
 pub fn replace_unused_tags(s: &str) -> String {
-    let re = Regex::new(r"(^|[^\\])##(.*)##").unwrap();
+    let re = Regex::new(r"(^|[^\\])##([^#\n]+)##").unwrap();
     re.replace_all(s, "").to_string()
 }
 
@@ -58,7 +58,7 @@ pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcEr
     };
     //println!("{}", doc);
 
-    let re = Regex::new(r"(^|[^\\])##(.*)##").unwrap();
+    let re = Regex::new(r"(^|[^\\])##([^#\n]+)##").unwrap();
     let mut caps = re.captures_iter(doc).peekable();
     loop {
         let c = match caps.next() {
@@ -95,7 +95,7 @@ pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcEr
 }
 
 pub fn read_or_none(p: impl AsRef<Path>) -> Result<Option<String>, StcError> {
-    println!("reading {} or none", p.as_ref().to_string_lossy());
+    //println!("reading {} or none", p.as_ref().to_string_lossy());
     match read_to_string(p) {
         Ok(v) => {
             Ok(if v != "" {
