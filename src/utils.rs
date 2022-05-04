@@ -27,6 +27,18 @@ pub fn find_all_unescaped(s: &str, pat: &str) -> Vec<usize> {
     ret2
 }
 
+pub fn replace_all_unescaped(s: &str, pat: &str, rep: &str) -> String {
+    let hits = find_all_unescaped(s, pat);
+    let mut s = String::from(s);
+
+    let l = pat.len();
+    for mat in hits {
+        s.replace_range(mat..mat + l, rep)
+    }
+
+    s
+}
+
 pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcError> { // 0 idx is front matter
     let mut ret = HashMap::new();
 
@@ -39,7 +51,7 @@ pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcEr
     else {
         ""
     };
-    println!("{}", doc);
+    //println!("{}", doc);
 
     let re = Regex::new(r"(^|[^\\])##(.*)##").unwrap();
     let mut caps = re.captures_iter(doc).peekable();
@@ -60,7 +72,7 @@ pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcEr
             Some(m2_r) => {
                 let m2 = m2_r.as_ref().unwrap();
                 let sec_end = m2.get(0).unwrap().start();
-                println!("{}", sec_end);
+                //println!("{}", sec_end);
                 &doc[sec_start..sec_end]
             }
             None => {
@@ -69,7 +81,7 @@ pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcEr
             }
         };
 
-        println!("containing {}", content);
+        //println!("containing {}", content);
 
         ret.insert(String::from(name), String::from(content));
     }
@@ -78,6 +90,7 @@ pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcEr
 }
 
 pub fn read_or_none(p: impl AsRef<Path>) -> Result<Option<String>, StcError> {
+    println!("reading {} or none", p.as_ref().to_string_lossy());
     match read_to_string(p) {
         Ok(v) => {
             Ok(if v != "" {
@@ -101,7 +114,7 @@ pub fn read_or_none(p: impl AsRef<Path>) -> Result<Option<String>, StcError> {
 pub fn parse_rep(s: &str) -> Result<(String, String), StcError> {
     match s.split_once('=') {
         Some((name, body)) => Ok((name.trim().into(), body.trim().into())),
-        None => return Err(StcError::RepErr(String::from(s)))
+        None => return Err(StcError::CfgErr(String::from(s)))
     }
 }
 
@@ -148,14 +161,17 @@ pub enum StcError {
     BadFrontMatter,
     #[error("regex error")]
     RegexErr(#[from]fancy_regex::Error),
-    #[error("error opening file")]
+    #[error("internal fs error")]
     FsError(#[from]io::Error),
-    #[error("malformed replacement")]
-    RepErr(String),
+    #[error("malformed config")]
+    CfgErr(String),
     #[error("non-unicode path")]
-    PathErr(String)
+    PathErr(String),
+    #[error("missing template error")]
+    TemplateError(String),
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

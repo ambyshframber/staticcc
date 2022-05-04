@@ -8,6 +8,5 @@ edition = "2021"
 [dependencies]
 argparse = "0.2.2"
 thiserror = "1.0.30"
-walkdir = "2"
 comrak = "0.12.1"
 fancy-regex = "0.10.0"

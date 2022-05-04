@@ -578,7 +578,6 @@ dependencies = [
  "comrak",
  "fancy-regex",
  "thiserror",
- "walkdir",
 ]
 
 [[package]]
