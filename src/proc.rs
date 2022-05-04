@@ -3,11 +3,11 @@ use std::collections::HashMap;
 use std::env::{current_dir, set_current_dir};
 use std::fs::{read_to_string, write, copy, create_dir_all, remove_dir_all};
 
-use argparse::{ArgumentParser, StoreOption, Collect};
+use argparse::{ArgumentParser, StoreOption, Collect, StoreTrue};
 use comrak::{ComrakOptions, markdown_to_html};
 
 use crate::walkdir::WalkDir;
-use crate::utils::{read_or_none, split_doc, StcError, parse_shit_markup, parse_rep, os_str_to_str_or_err, is_markdown, replace_all_unescaped};
+use crate::utils::*;
 
 #[derive(Default, Debug)]
 pub struct Processor {
@@ -143,6 +143,7 @@ impl Processor {
             let rep_trigger = format!("##{}##", k);
             template = replace_all_unescaped(&template, &rep_trigger, &v);
         }
+        template = replace_unused_tags(&template);
 
         println!("{}", template);
 
@@ -192,6 +193,15 @@ impl ProcOpts {
             ap.refer(&mut po.md_ignore).add_option(&["-I"], Collect, "a file to ignore, relative to the input dir");
             ap.refer(&mut po.md_replace).add_option(&["-R"], Collect, "a replacement to make in markdown");
             //ap.refer(&mut po.md_templates).add_option(&["-T"], Collect, "a path to a template file");
+
+            ap.refer(&mut po.md_options.extension.strikethrough).add_option(&["-s"], StoreTrue, "strikethrough");
+            ap.refer(&mut po.md_options.extension.tagfilter).add_option(&["-T"], StoreTrue, "tag filter");
+            ap.refer(&mut po.md_options.extension.table).add_option(&["-t"], StoreTrue, "tables");
+            ap.refer(&mut po.md_options.extension.autolink).add_option(&["-a"], StoreTrue, "autolink");
+            ap.refer(&mut po.md_options.extension.tasklist).add_option(&["-l"], StoreTrue, "tasklist");
+            ap.refer(&mut po.md_options.extension.superscript).add_option(&["-S"], StoreTrue, "superscript");
+            ap.refer(&mut po.md_options.extension.footnotes).add_option(&["-f"], StoreTrue, "footnotes");
+            ap.refer(&mut po.md_options.extension.description_lists).add_option(&["-D"], StoreTrue, "description lists");
 
             ap.parse_args_or_exit()
         }

@@ -39,6 +39,11 @@ pub fn replace_all_unescaped(s: &str, pat: &str, rep: &str) -> String {
     s
 }
 
+pub fn replace_unused_tags(s: &str) -> String {
+    let re = Regex::new(r"(^|[^\\])##(.*)##").unwrap();
+    re.replace_all(s, "").to_string()
+}
+
 pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcError> { // 0 idx is front matter
     let mut ret = HashMap::new();
 
