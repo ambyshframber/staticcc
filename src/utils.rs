@@ -44,44 +44,39 @@ pub fn replace_unused_tags(s: &str) -> String {
     re.replace_all(s, "").to_string()
 }
 
-pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcError> { // 0 idx is front matter
+pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcError> {
     let mut ret = HashMap::new();
 
-    let front_matter = if doc.starts_with("---\n") {
+    let front_matter = if doc.starts_with("---\n") { // extract front matter
         let fm_end = doc.find("\n---\n").ok_or(StcError::BadFrontMatter)?;
         let fm = &doc[4..fm_end];
         doc = &doc[fm_end + 5..];
         fm
     }
-    else {
+    else { // if no front matter found, empty string
         ""
     };
     //println!("{}", doc);
 
-    let re = Regex::new(r"(^|[^\\])##([^#\n]+)##").unwrap();
-    let mut caps = re.captures_iter(doc).peekable();
+    let re = Regex::new(r"(^|[^\\])##([^#\n]+)##").unwrap(); // ok this is where it gets funky
+    let mut caps = re.captures_iter(doc).peekable(); // we need peekable. you will see why later
     loop {
-        let c = match caps.next() {
+        let c = match caps.next() { // get the next section label
             Some(v) => v?,
             None => break
         }; // catch errors
 
-        let name = c.get(2).unwrap().as_str();
-        //println!("found {}", name.as_str());
-        //println!("{} to {}", name.start(), name.end());
+        let name = c.get(2).unwrap().as_str(); // extract section name
 
-        let full = c.get(0).unwrap();
-        let sec_start = full.end();
-        //println!("{}", sec_start);
-        let content = match caps.peek() {
+        let full = c.get(0).unwrap(); // get full match, for start/end positions
+        let sec_start = full.end(); // section starts where start label ends
+        let content = match caps.peek() { // get NEXT label to find sec end
             Some(m2_r) => {
-                let m2 = m2_r.as_ref().unwrap();
+                let m2 = m2_r.as_ref().unwrap(); // unwrap has to be used here, because borrow checker fuckery
                 let sec_end = m2.get(0).unwrap().start();
-                //println!("{}", sec_end);
                 &doc[sec_start..sec_end]
             }
-            None => {
-                //dbg!("none");
+            None => { // if no next label, current sec goes to document end
                 &doc[sec_start..]
             }
         };
@@ -124,14 +119,14 @@ pub fn parse_rep(s: &str) -> Result<(String, String), StcError> {
 }
 
 pub fn parse_shit_markup(s: &str) -> Result<Vec<(String, String)>, StcError> {
-    let blocks = s.split("\n----\n");
+    let blocks = s.split("\n----\n"); // get blocks
     let mut ret = Vec::new();
     for b in blocks {
         match b.split_once('\n') {
-            Some((name, body)) => {
+            Some((name, body)) => { // if its multi line, multi line it
                 ret.push((name.trim().into(), body.into()))
             }
-            None => {
+            None => { // if it's not, single line it
                 ret.push(parse_rep(b)?)
             }
         }
@@ -139,7 +134,7 @@ pub fn parse_shit_markup(s: &str) -> Result<Vec<(String, String)>, StcError> {
     Ok(ret)
 }
 
-pub fn os_str_to_str_or_err(s: &OsStr) -> Result<&str, StcError> {
+pub fn os_str_to_str_or_err(s: &OsStr) -> Result<&str, StcError> { // helper fn
     match s.to_str() {
         Some(v) => Ok(v),
         None => Err(StcError::PathErr(s.to_string_lossy().to_string()))
@@ -147,13 +142,13 @@ pub fn os_str_to_str_or_err(s: &OsStr) -> Result<&str, StcError> {
 }
 
 pub fn is_markdown(p: impl AsRef<Path>) -> Result<bool, StcError> {
-    let ext = match p.as_ref().extension() {
+    let ext = match p.as_ref().extension() { // if no extension, it's not markdown
         Some(v) => v,
         None => return Ok(false)
     };
-    let ext_uni = os_str_to_str_or_err(ext)?;
+    let ext_uni = os_str_to_str_or_err(ext)?; // error out on non-unicode
     Ok(if ext_uni == "md" {
-        true  
+        true
     }
     else {
         false

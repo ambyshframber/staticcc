@@ -47,9 +47,10 @@ impl Processor {
         };
 
         let mut p = Processor { // pull out easy stuff
-            inp_dir: dir.join(po.inp_dir.unwrap_or_else(|| String::from("site"))),
-            out_dir: dir.join(po.out_dir.unwrap_or_else(|| String::from("build"))),
-            cfg_dir: dir.join(po.cfg_dir.unwrap_or_else(|| String::from("cfg"))),
+            inp_dir: dir.join(po.inp_dir.unwrap_or_else(|| String::from("site"))), // FIX THIS
+            out_dir: dir.join(po.out_dir.unwrap_or_else(|| String::from("build"))), // at present relative i/b/c dirs wont work
+            cfg_dir: dir.join(po.cfg_dir.unwrap_or_else(|| String::from("cfg"))), // because join will go relative to the main dir
+            // on second thoughts im not sure i have enough spoons for a fix
 
             md_ignore: po.md_ignore,
             md_replace: HashMap::new(),
@@ -57,7 +58,7 @@ impl Processor {
             md_options: po.md_options
         }; // init struct set up
 
-        if p.out_dir.exists() {
+        if p.out_dir.exists() { // make sure build dir exists
             remove_dir_all(&p.out_dir)?;
         }
         create_dir_all(&p.out_dir)?;
@@ -187,16 +188,15 @@ impl ProcOpts {
             let mut ap = ArgumentParser::new();
 
             ap.refer(&mut po.dir).add_option(&["-d"], StoreOption, "the working directory");
-            ap.refer(&mut po.inp_dir).add_option(&["-i"], StoreOption, "the input directory");
-            ap.refer(&mut po.out_dir).add_option(&["-o"], StoreOption, "the output directory");
-            ap.refer(&mut po.cfg_dir).add_option(&["-c"], StoreOption, "the config directory");
+            ap.refer(&mut po.inp_dir).add_option(&["-i"], StoreOption, "the input directory, relative to wd");
+            ap.refer(&mut po.out_dir).add_option(&["-o"], StoreOption, "the output directory, relative to wd");
+            ap.refer(&mut po.cfg_dir).add_option(&["-c"], StoreOption, "the config directory, relative to wd");
 
             ap.refer(&mut po.md_ignore).add_option(&["-I"], Collect, "a file to ignore, relative to the input dir");
             ap.refer(&mut po.md_replace).add_option(&["-R"], Collect, "a replacement to make in markdown");
             //ap.refer(&mut po.md_templates).add_option(&["-T"], Collect, "a path to a template file");
 
             ap.refer(&mut po.md_options.extension.strikethrough).add_option(&["-s"], StoreTrue, "strikethrough");
-            ap.refer(&mut po.md_options.extension.tagfilter).add_option(&["-T"], StoreTrue, "tag filter");
             ap.refer(&mut po.md_options.extension.table).add_option(&["-t"], StoreTrue, "tables");
             ap.refer(&mut po.md_options.extension.autolink).add_option(&["-a"], StoreTrue, "autolink");
             ap.refer(&mut po.md_options.extension.tasklist).add_option(&["-l"], StoreTrue, "tasklist");
