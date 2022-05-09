@@ -7,14 +7,14 @@ use crate::utils::StcError;
 
 pub struct WalkDir {
     root: PathBuf,
-    internal_iters: Vec<FatReadDir> // iter over the last until it runs out
+    internal_iters: Vec<FatReadDir>, // iter over the last until it runs out
 }
 impl WalkDir {
     pub fn new(path: impl AsRef<Path>) -> Result<WalkDir, StcError> {
         let root_iter = FatReadDir::new(&path, "")?;
         Ok(WalkDir {
             root: PathBuf::from(path.as_ref()),
-            internal_iters: vec![root_iter]
+            internal_iters: vec![root_iter],
         })
     }
 }

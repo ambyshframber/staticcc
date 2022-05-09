@@ -4,9 +4,10 @@ use utils::StcError;
 mod proc;
 mod utils;
 mod walkdir;
+mod rss;
 
 fn main() -> Result<(), StcError> {
-    let p = Processor::new()?;
+    let mut p = Processor::new()?;
     //println!("{:?}", p);
     p.build()?;
     

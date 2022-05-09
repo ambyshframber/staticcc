@@ -6,6 +6,7 @@ use std::ffi::OsStr;
 
 use thiserror::Error;
 use fancy_regex::Regex;
+use crate::rss::RssError;
 
 pub fn find_all_unescaped(s: &str, pat: &str) -> Vec<usize> {
     let mat = s.match_indices(pat);
@@ -42,6 +43,7 @@ pub fn replace_all_unescaped(s: &str, pat: &str, rep: &str) -> String {
 pub fn replace_unused_tags(s: &str) -> String {
     let re = Regex::new(r"(^|[^\\])##([^#\n]+)##").unwrap();
     re.replace_all(s, "").to_string()
+    // TODO: remove escapes from escaped tags
 }
 
 pub fn split_doc(mut doc: &str) -> Result<(&str, HashMap<String, String>), StcError> {
@@ -117,7 +119,6 @@ pub fn parse_rep(s: &str) -> Result<(String, String), StcError> {
         None => return Err(StcError::CfgErr(String::from(s)))
     }
 }
-
 pub fn parse_shit_markup(s: &str) -> Result<Vec<(String, String)>, StcError> {
     let blocks = s.split("\n----\n"); // get blocks
     let mut ret = Vec::new();
@@ -132,6 +133,20 @@ pub fn parse_shit_markup(s: &str) -> Result<Vec<(String, String)>, StcError> {
         }
     }
     Ok(ret)
+}
+pub fn parse_singleline_scf(s: &str) -> Result<Vec<(String, String)>, StcError> {
+    let mut ret = Vec::new();
+    for line in s.split('\n') {
+        ret.push(parse_rep(line)?)
+    }
+    Ok(ret)
+}
+pub fn scf_to_hashmap(cfg: Vec<(String, String)>) -> HashMap<String, String> {
+    let mut ret = HashMap::new();
+    for (k, v) in cfg {
+        ret.insert(k, v);
+    }
+    ret
 }
 
 pub fn os_str_to_str_or_err(s: &OsStr) -> Result<&str, StcError> { // helper fn
@@ -155,6 +170,22 @@ pub fn is_markdown(p: impl AsRef<Path>) -> Result<bool, StcError> {
     })
 }
 
+pub trait OptionHelpers<T> {
+    fn convert_inner<U, F>(self, f: F) -> Option<U>
+    where F: FnOnce(T) -> U;
+}
+impl<T> OptionHelpers<T> for Option<T> {
+    fn convert_inner<U, F>(self, f: F) -> Option<U>
+    where F: FnOnce(T) -> U {
+        match self {
+            None => None,
+            Some(v) => {
+                Some(f(v))
+            }
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum StcError {
     #[error("bad front matter formatting")]
@@ -169,6 +200,8 @@ pub enum StcError {
     PathErr(String),
     #[error("missing template error")]
     TemplateError(String),
+    #[error("blog data error")]
+    RssError(#[from] RssError),
 }
 
 #[cfg(test)]

@@ -6,6 +6,8 @@ staticcc is like drneo, but built for local first, rather than local as an after
 the control flow for drneo's local mode is horrible, so i decided to redo the whole thing.
 there's also some differences in replacements and templating, explained below
 
+for a production example, check out [my website](https://ambylastname.xyz) and its [source code](https://github.com/ambyshframber/wobsite_v3)
+
 ## basic usage
 
 when run with no directory arguments, staticcc expects a directory with the following structure:
@@ -132,6 +134,43 @@ for example, if you had `TITLE=homepage` in the markdown file's front matter, "h
 this would work with any key/value pair.
 
 after sections and front matter are done, unused tags are cleaned up with some regex magic.
+
+## blogging
+
+staticcc has support for multiple concurrent rss channels, all of which are configured in the `cfg/channels` file.
+the file is multiline SCF, where the key of each block is the internal channel id, and the value is some single-line SCF.
+
+an example config would be:
+```
+feed1
+title=example blog!
+description=a demo blog for the staticcc program
+page=blog
+image=rss_image.png
+outfile=blog/rss.xml
+prepend=https://example.com/
+----
+(another config block here)
+```
+this would create a channels with the id `feed1`.
+
+channel keys are:
+- `title`: the title of the rss feed *
+- `path`: the blog page, from site root *
+- `prepend`: a string to prepend to all paths (usually just your domain name) *
+- `outfile`: the path to place the output rss xml, from site root *
+- `description`: the feed description. this is required for the rss spec, but if it's left out here, staticcc uses the empty string
+- `image`: the path to the image to use. link and title sub-tags are generated automatically
+keys marked with `*` are required
+
+pages are added to channels with some front matter keys.
+- `rss_chan_id`: determines the relevant feed *
+- `rss_title`: the item title (falls back on `title` which can be useful for preventing magic numbers) *
+- `rss_description`: the item description. again, this is required for the spec, but staticcc will use the empty string
+- `rss_pubdate`: the publication date of the item, in rfc2822 format. staticcc checks this for you and will refuse to publish the feed if the format is wrong
+keys marked with `*` are required
+
+check out [the spec](https://www.rssboard.org/rss-specification) for more info on rss
 
 ## command line arguments
 

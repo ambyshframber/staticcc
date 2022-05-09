@@ -1,13 +1,14 @@
 use std::path::{Path, PathBuf};
 use std::collections::HashMap;
 use std::env::{current_dir, set_current_dir};
-use std::fs::{read_to_string, write, copy, create_dir_all, remove_dir_all};
+use std::fs::{read_to_string, write, copy, create_dir_all, remove_dir_all, File};
 
 use argparse::{ArgumentParser, StoreOption, Collect, StoreTrue};
 use comrak::{ComrakOptions, markdown_to_html};
 
 use crate::walkdir::WalkDir;
 use crate::utils::*;
+use crate::rss::{FatChannel, RssItem, RssError, get_channels};
 
 #[derive(Default, Debug)]
 pub struct Processor {
@@ -18,7 +19,9 @@ pub struct Processor {
     md_ignore: Vec<PathBuf>,
     md_replace: HashMap<String, String>,
     md_templates: HashMap<String, String>,
-    md_options: ComrakOptions
+    md_options: ComrakOptions,
+
+    rss_channels: HashMap<String, FatChannel>
 }
 #[derive(Default)]
 struct ProcOpts {
@@ -30,7 +33,7 @@ struct ProcOpts {
     pub md_ignore: Vec<PathBuf>,
     pub md_replace: Vec<String>,
     //pub md_templates: Vec<String>,
-    pub md_options: ComrakOptions
+    pub md_options: ComrakOptions,
 }
 
 impl Processor {
@@ -55,7 +58,9 @@ impl Processor {
             md_ignore: po.md_ignore,
             md_replace: HashMap::new(),
             md_templates: HashMap::new(),
-            md_options: po.md_options
+            md_options: po.md_options,
+
+            rss_channels: HashMap::new()
         }; // init struct set up
 
         if p.out_dir.exists() { // make sure build dir exists
@@ -85,9 +90,7 @@ impl Processor {
         for r in po.md_replace { // reps from command line
             parsed.push(parse_rep(&r)?)
         }
-        for (t, r) in parsed { // insert into hashmap
-            p.md_replace.insert(format!("REP={}", t), r);
-        }
+        p.md_replace = scf_to_hashmap(parsed);
 
         println!("finding templates");
         let templates_dir = p.cfg_dir.join("templates");
@@ -100,12 +103,19 @@ impl Processor {
                 p.md_templates.insert(name, content);
             }
         }
+        match read_or_none(p.cfg_dir.join("channels"))? {
+            None => {},
+            Some(v) => {
+                let cfg = scf_to_hashmap(parse_shit_markup(&v)?);
+                p.rss_channels = get_channels(&cfg)?;
+            }
+        }
 
         Ok(p)
     }
 
     /// path MUST be relative to input dir or This Will Not Work
-    fn process_file(&self, path: impl AsRef<Path>) -> Result<(), StcError> {
+    fn process_file(&mut self, path: impl AsRef<Path>) -> Result<(), StcError> {
         if is_markdown(&path)? && !self.md_ignore.iter().any(|ign| path.as_ref() == ign) { // markdown AND NOT ignored
             self.process_markdown(path)?
         }
@@ -116,11 +126,14 @@ impl Processor {
         Ok(())
     }
 
-    fn process_markdown(&self, path: impl AsRef<Path>) -> Result<(), StcError> {
+    fn process_markdown(&mut self, path: impl AsRef<Path>) -> Result<(), StcError> {
         println!("processing {}", path.as_ref().to_string_lossy());
         let md = read_to_string(self.inp_dir.join(&path))?;
-
+        
         let (fm, document) = split_doc(&md)?;
+
+        let mut out_path = self.out_dir.join(&path);
+        out_path.set_extension("html");
         
         let mut cfg = HashMap::new(); // get cfg from front matter
         for c in fm.split('\n') {
@@ -130,20 +143,26 @@ impl Processor {
             }
         }
 
+        if let Some(_) = cfg.get("rss_chan_id") {
+            let (id, item) = RssItem::new(&cfg, path.as_ref())?;
+            let chan = self.rss_channels.get_mut(&id).ok_or(RssError::ChannelNotFound(id.into()))?;
+            chan.items.push(item)
+        }
+
         let main = &String::from("main");
         let temp_name = cfg.get("template").unwrap_or(main);
         let mut template = self.md_templates.get(temp_name).ok_or(StcError::TemplateError(temp_name.to_owned()))?.to_owned();
         
-        for (block_name, block) in document {
+        for (block_name, block) in document { // document blocks
             let rep_trigger = format!("##{}##", block_name);
             template = replace_all_unescaped(&template, &rep_trigger, &block);
         }
-        for (k, v) in cfg {
+        for (k, v) in cfg { // fm configs
             let rep_trigger = format!("##{}##", k);
             template = replace_all_unescaped(&template, &rep_trigger, &v);
         }
-        for (trig, rep) in &self.md_replace {
-            template = replace_all_unescaped(&template, trig, rep)
+        for (trig, rep) in &self.md_replace { // global reps
+            template = replace_all_unescaped(&template, &format!("REP={}", trig), rep)
         }
         template = replace_unused_tags(&template);
 
@@ -151,15 +170,12 @@ impl Processor {
 
         let html = markdown_to_html(&template, &self.md_options);
 
-        let mut out_path = self.out_dir.join(&path);
-        out_path.set_extension("html");
-
         write(out_path, html)?;
 
         Ok(())
     }
 
-    pub fn build(&self) -> Result<(), StcError> {
+    pub fn build(&mut self) -> Result<(), StcError> {
         println!("building site");
 
         let wd = WalkDir::new(&self.inp_dir)?;
@@ -172,6 +188,17 @@ impl Processor {
             else {
                 self.process_file(entry)?;
             }
+        }
+
+        for (id, c) in &mut self.rss_channels {
+            println!("finalising rss channel {}", id);
+            let mut items = Vec::new();
+            for i in &c.items {
+                items.push(i.finalise(&c.prepend));
+            }
+            c.c.items.append(&mut items);
+            let f = File::create(self.out_dir.join(&c.out_file))?;
+            let _ = c.c.write_to(f);
         }
 
         Ok(())
