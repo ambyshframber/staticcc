@@ -5,7 +5,7 @@ use crate::utils::*;
 use thiserror::Error;
 use rss::{Channel, Item, ChannelBuilder, ItemBuilder, ImageBuilder, Guid};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RssItem {
     page: String, // path relative to site root
     // guid is "{url}@{channel_id}"
@@ -15,12 +15,16 @@ pub struct RssItem {
 }
 
 impl RssItem {
-    pub fn new(front_matter: &HashMap<String, String>, path: &Path) -> Result<(String, RssItem), StcError> {
+    pub fn new(front_matter: &HashMap<String, String>, path: &Path) -> Result<(Vec<String>, RssItem), StcError> {
         let mut path = PathBuf::from(path);
         path.set_extension("html");
         let page = os_str_to_str_or_err(path.as_os_str())?.into();
         println!("creating rss item at {}", page);
-        let channel_id = front_matter.get("rss_chan_id").unwrap().to_owned(); // will always exist, as this method will only be called when that key exists
+        let channel_ids = front_matter.get("rss_chan_id").unwrap().to_owned(); // will always exist, as this method will only be called when that key exists
+        let mut cids_owned = Vec::new();
+        for cid in channel_ids.split(',') {
+            cids_owned.push(String::from(cid))
+        }
         let title = match front_matter.get("rss_title") {
             Some(v) => v,
             None => {
@@ -41,16 +45,16 @@ impl RssItem {
         let r = RssItem {
             pubdate, page, title, description
         };
-        Ok((channel_id, r))
+        Ok((cids_owned, r))
     }
 
-    pub fn finalise(&self, prepend: &str) -> Item {
+    pub fn finalise(&self, prepend: &str, cid: &str) -> Item {
         let mut ib = ItemBuilder::default();
         ib.title(self.title.clone());
         ib.link(format!("{}{}", prepend, &self.page));
         let guid = Guid {
-            value: format!("{}{}", prepend, &self.page),
-            permalink: true
+            value: format!("{}{}@{}", prepend, &self.page, cid),
+            permalink: false
         };
         ib.guid(guid);
         ib.description(self.description.clone());

@@ -161,6 +161,7 @@ channel keys are:
 - `outfile`: the path to place the output rss xml, from site root *
 - `description`: the feed description. this is required for the rss spec, but if it's left out here, staticcc uses the empty string
 - `image`: the path to the image to use. link and title sub-tags are generated automatically
+
 keys marked with `*` are required
 
 pages are added to channels with some front matter keys.
@@ -168,6 +169,7 @@ pages are added to channels with some front matter keys.
 - `rss_title`: the item title (falls back on `title` which can be useful for preventing magic numbers) *
 - `rss_description`: the item description. again, this is required for the spec, but staticcc will use the empty string
 - `rss_pubdate`: the publication date of the item, in rfc2822 format. staticcc checks this for you and will refuse to publish the feed if the format is wrong
+
 keys marked with `*` are required
 
 check out [the spec](https://www.rssboard.org/rss-specification) for more info on rss

@@ -144,9 +144,11 @@ impl Processor {
         }
 
         if let Some(_) = cfg.get("rss_chan_id") {
-            let (id, item) = RssItem::new(&cfg, path.as_ref())?;
-            let chan = self.rss_channels.get_mut(&id).ok_or(RssError::ChannelNotFound(id.into()))?;
-            chan.items.push(item)
+            let (channels, item) = RssItem::new(&cfg, path.as_ref())?;
+            for id in channels {
+                let chan = self.rss_channels.get_mut(&id).ok_or(RssError::ChannelNotFound(id.into()))?;
+                chan.items.push(item.clone())
+            }
         }
 
         let main = &String::from("main");
@@ -194,7 +196,7 @@ impl Processor {
             println!("finalising rss channel {}", id);
             let mut items = Vec::new();
             for i in &c.items {
-                items.push(i.finalise(&c.prepend));
+                items.push(i.finalise(&c.prepend, id));
             }
             c.c.items.append(&mut items);
             let f = File::create(self.out_dir.join(&c.out_file))?;
