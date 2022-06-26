@@ -152,7 +152,7 @@ prepend=https://example.com/
 ----
 (another config block here)
 ```
-this would create a channels with the id `feed1`.
+this would create a channel with the id `feed1`.
 
 channel keys are:
 - `title`: the title of the rss feed *
@@ -160,17 +160,17 @@ channel keys are:
 - `prepend`: a string to prepend to all paths (usually just your domain name) *
 - `outfile`: the path to place the output rss xml, from site root *
 - `description`: the feed description. this is required for the rss spec, but if it's left out here, staticcc uses the empty string
-- `image`: the path to the image to use. link and title sub-tags are generated automatically
-
+- `image`: the path to the image to use. link and title sub-tags are generated automatically  
 keys marked with `*` are required
 
 pages are added to channels with some front matter keys.
-- `rss_chan_id`: determines the relevant feed *
+- `rss_chan_id`: determines the relevant feeds. multiple ids can be added here *
 - `rss_title`: the item title (falls back on `title` which can be useful for preventing magic numbers) *
 - `rss_description`: the item description. again, this is required for the spec, but staticcc will use the empty string
-- `rss_pubdate`: the publication date of the item, in rfc2822 format. staticcc checks this for you and will refuse to publish the feed if the format is wrong
-
+- `rss_pubdate`: the publication date of the item, in rfc2822 format. staticcc checks this for you and will refuse to publish the feed if the format is wrong  
 keys marked with `*` are required
+
+the guid of every item is just the page url, even if it's added to multiple channels
 
 check out [the spec](https://www.rssboard.org/rss-specification) for more info on rss
 

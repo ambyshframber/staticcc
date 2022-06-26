@@ -170,7 +170,7 @@ pub fn is_markdown(p: impl AsRef<Path>) -> Result<bool, StcError> {
     })
 }
 
-pub trait OptionHelpers<T> {
+/*pub trait OptionHelpers<T> {
     fn convert_inner<U, F>(self, f: F) -> Option<U>
     where F: FnOnce(T) -> U;
 }
@@ -184,7 +184,7 @@ impl<T> OptionHelpers<T> for Option<T> {
             }
         }
     }
-}
+}*/
 
 #[derive(Error, Debug)]
 pub enum StcError {

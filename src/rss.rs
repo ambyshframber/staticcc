@@ -40,7 +40,7 @@ impl RssItem {
                 Some(DateTime::parse_from_rfc2822(v).map_err(|e| RssError::BadPubdate(e))?.with_timezone(&Utc))
             }
         };
-        let description = front_matter.get("rss_description").convert_inner(|s| s.to_owned()).unwrap_or("".into()); // required for rss, but not for staticcc
+        let description = front_matter.get("rss_description").map(|s| s.to_owned()).unwrap_or("".into()); // required for rss, but not for staticcc
 
         let r = RssItem {
             pubdate, page, title, description
@@ -48,17 +48,17 @@ impl RssItem {
         Ok((cids_owned, r))
     }
 
-    pub fn finalise(&self, prepend: &str, cid: &str) -> Item {
+    pub fn finalise(&self, prepend: &str, _cid: &str) -> Item {
         let mut ib = ItemBuilder::default();
         ib.title(self.title.clone());
         ib.link(format!("{}{}", prepend, &self.page));
         let guid = Guid {
-            value: format!("{}{}@{}", prepend, &self.page, cid),
-            permalink: false
+            value: format!("{}{}", prepend, &self.page),
+            permalink: true
         };
         ib.guid(guid);
         ib.description(self.description.clone());
-        ib.pub_date(self.pubdate.convert_inner(|d| d.to_rfc2822())); // chefs kiss
+        ib.pub_date(self.pubdate.map(|d| d.to_rfc2822())); // chefs kiss
 
         ib.build()
     }
