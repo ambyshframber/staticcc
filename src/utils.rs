@@ -29,15 +29,17 @@ pub fn find_all_unescaped(s: &str, pat: &str) -> Vec<usize> {
 }
 
 pub fn replace_all_unescaped(s: &str, pat: &str, rep: &str) -> String {
-    let hits = find_all_unescaped(s, pat);
-    let mut s = String::from(s);
-
-    let l = pat.len();
-    for mat in hits {
-        s.replace_range(mat..mat + l, rep)
+    let mut ret = String::from(s);
+    loop {
+        let idxs = find_all_unescaped(&ret, pat);
+        if idxs.len() == 0 {
+            break
+        }
+        else {
+            ret.replace_range(idxs[0]..idxs[0] + pat.len(), rep)
+        }
     }
-
-    s
+    ret
 }
 
 pub fn replace_unused_tags(s: &str) -> String {
@@ -213,6 +215,12 @@ mod tests {
         let s = "test string ##HEAD## \\##HEAD## test";
         let idxs = find_all_unescaped(s, "##HEAD##");
         assert_eq!(idxs, vec![12])
+    }
+    #[test]
+    fn replace_all_unescaped_t() {
+        let s = "test string ##HEAD## \\##HEAD## test ##HEAD## padding";
+        let output = replace_all_unescaped(s, "##HEAD##", "aaa");
+        assert_eq!(output, String::from("test string aaa \\##HEAD## test aaa padding"))
     }
 
     #[test]
